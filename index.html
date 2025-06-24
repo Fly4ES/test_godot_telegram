@@ -11,51 +11,34 @@
 <body>
     <canvas id="canvas"></canvas>
     <script>
-        // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.expand();
-        tg.enableClosingConfirmation();
-
-        // Конфигурация Godot Engine
-        const engine = new Engine();
         
+        // Создаем глобальный объект для моста
+        window.GodotBridge = {
+            platform: {
+                id: "telegram",
+                user: {
+                    id: tg.initDataUnsafe.user?.id,
+                    first_name: tg.initDataUnsafe.user?.first_name,
+                    username: tg.initDataUnsafe.user?.username
+                },
+                init_data_raw: tg.initData
+            }
+        };
+    
+        const engine = new Engine();
         engine.startGame({
             canvas: document.getElementById('canvas'),
             executable: 'testTelegramExport',
             mainPack: 'testTelegramExport.pck',
-            // Критически важные параметры:
-            locateFile: (path, prefix) => {
-                // Правильно разрешаем пути к WASM и PCK файлам
-                if (path.endsWith('.wasm')) return 'testTelegramExport.wasm';
-                if (path.endsWith('.pck')) return 'testTelegramExport.pck';
-                return prefix + path;
-            },
-            onProgress: (current, total) => {
-                console.log(`Загрузка: ${current}/${total}`);
-            }
+            locateFile: (path) => path
         }).then(() => {
-            console.log('Godot Engine успешно загружен!');
-            
-            // Передача данных в Godot после загрузки
-            const userData = {
-                id: tg.initDataUnsafe.user?.id,
-                first_name: tg.initDataUnsafe.user?.first_name,
-                username: tg.initDataUnsafe.user?.username
-            };
-            
-            // Вариант 1: Через ccall (если настроено в Godot)
+            console.log("Godot загружен!");
+            // Передаем данные в Godot через глобальную переменную
             if (window.Module) {
-                window.Module.ccall('receive_telegram_data', 
-                                 'void', 
-                                 ['string'], 
-                                 [JSON.stringify(userData)]);
+                Module.ccall('init_telegram_data', 'void', [], []);
             }
-            
-            // Вариант 2: Через глобальную переменную
-            window.TelegramUserData = userData;
-        }).catch((err) => {
-            console.error('Ошибка загрузки Godot:', err);
-            tg.showAlert('Произошла ошибка при загрузке игры');
         });
     </script>
 </body>
